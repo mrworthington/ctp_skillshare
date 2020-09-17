@@ -505,3 +505,5 @@ devtools::install_github("yihui/xaringan")
 devtools::install_github("gadenbuie/xaringanExtra")
 devtools::install_github("EvaMaeRey/flipbookr")
 ```
+
+Also, the interactive chart was made with one of my favorite R packages called [`highcharter`](https://jkunst.com/highcharter/) which is an R wrapper for the highcharts.js library.
