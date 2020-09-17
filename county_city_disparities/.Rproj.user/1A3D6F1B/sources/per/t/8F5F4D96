@@ -1,0 +1,33 @@
+{
+    "id": "8F5F4D96",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1599034263718.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "expression": "fig7c",
+        "caption": "fig7c",
+        "totalObservations": 124,
+        "displayedObservations": 124,
+        "variables": 38,
+        "cacheKey": "FF50F1BB",
+        "object": "fig7c",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=fig7c&cache_key=FF50F1BB&max_cols=50",
+        "preview": 0,
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 0,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1599034263718,
+    "read_only": false,
+    "read_only_alternatives": []
+}

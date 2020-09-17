@@ -1,0 +1,271 @@
+--------------------------------------------------------------------------------
+Codebook for Social Explorer report ID: R12592984
+--------------------------------------------------------------------------------
+
+Contents
+    - Table Summary
+    - Data Dictionary
+    - Citation and Use
+
+
+--------------------------------------------------------------------------------
+Table Summary
+--------------------------------------------------------------------------------
+ 
+Survey:           ACS 2018 (5-Year Estimates)
+Dataset:          Social Explorer Tables: ACS 2018 (5-Year Estimates)
+Tables:
+
+      1. Total Population
+         Universe:  Total Population
+         Name:      A00001
+         Variables:
+            A00001_001:   Total Population
+
+
+      2. Race
+         Universe:  Total Population
+         Name:      A03001
+         Variables:
+            A03001_001:   Total Population:
+            A03001_002:      White Alone
+            A03001_003:      Black or African American Alone
+            A03001_004:      American Indian and Alaska Native Alone
+            A03001_005:      Asian Alone
+            A03001_006:      Native Hawaiian and Other Pacific Islander Alone
+            A03001_007:      Some Other Race Alone
+            A03001_008:      Two or More Races
+
+
+      3. Hispanic or Latino by Race
+         Universe:  Total Population
+         Name:      A04001
+         Variables:
+            A04001_001:   Total Population
+            A04001_002:      Not Hispanic or Latino:
+            A04001_003:         White Alone
+            A04001_004:         Black or African American Alone
+            A04001_005:         American Indian and Alaska Native Alone
+            A04001_006:         Asian Alone
+            A04001_007:         Native Hawaiian and Other Pacific Islander Alone
+            A04001_008:         Some Other Race Alone
+            A04001_009:         Two or More Races
+            A04001_010:      Hispanic or Latino:
+            A04001_011:         White Alone
+            A04001_012:         Black or African American Alone
+            A04001_013:         American Indian and Alaska Native Alone
+            A04001_014:         Asian Alone
+            A04001_015:         Native Hawaiian and Other Pacific Islander Alone
+            A04001_016:         Some Other Race Alone
+            A04001_017:         Two or More Races
+
+
+      4. Hispanic or Latino by Race (Collapsed Version)
+         Universe:  Total Population
+         Name:      B04001
+         Variables:
+            B04001_001:   Total Population:
+            B04001_002:      Not Hispanic or Latino:
+            B04001_003:         White Alone
+            B04001_004:         Black or African American Alone
+            B04001_005:         American Indian and Alaska Native Alone
+            B04001_006:         Asian Alone
+            B04001_007:         Native Hawaiian and Other Pacific Islander Alone
+            B04001_008:         Some Other Race Alone
+            B04001_009:         Two or More Races
+            B04001_010:      Hispanic or Latino
+
+
+      5. Hispanic or Latino by Specific Origin
+         Universe:  Total population
+         Name:      A04002
+         Variables:
+            A04002_001:   Total Population
+            A04002_002:      Not Hispanic or Latino
+            A04002_003:      Hispanic or Latino:
+            A04002_004:         Mexican
+            A04002_005:         Puerto Rican
+            A04002_006:         Cuban
+            A04002_007:         Dominican Republic
+            A04002_008:         Central American:
+            A04002_009:            Costa Rican
+            A04002_010:            Guatemalan
+            A04002_011:            Honduran
+            A04002_012:            Nicaraguan
+            A04002_013:            Panamanian
+            A04002_014:            Salvadoran
+            A04002_015:            Other Central American
+            A04002_016:         South American:
+            A04002_017:            Argentinean
+            A04002_018:            Bolivian
+            A04002_019:            Chilean
+            A04002_020:            Colombian
+            A04002_021:            Ecuadorian
+            A04002_022:            Paraguayan
+            A04002_023:            Peruvian
+            A04002_024:            Uruguayan
+            A04002_025:            Venezuelan
+            A04002_026:            Other South American
+            A04002_027:         Other Hispanic or Latino:
+            A04002_028:            Spaniard
+            A04002_029:            Spanish
+            A04002_030:            Spanish American
+            A04002_031:            All Other Hispanic or Latino
+
+
+
+
+
+ 
+ 
+ 
+--------------------------------------------------------------------------------
+Data Dictionary
+--------------------------------------------------------------------------------
+ 
+Variables 
+      FIPS:           FIPS
+      GEOID:          Geographic Identifier
+      NAME:           Name of Area
+      QName:          Qualifying Name
+      STUSAB:         State/U.S.-Abbreviation (USPS)
+      SUMLEV:         Summary Level
+      GEOCOMP:        Geographic Component
+      FILEID:         File Identification
+      LOGRECNO:       Logical Record Number
+      US:             US
+      REGION:         Region
+      DIVISION:       Division
+      STATECE:        State (Census Code)
+      STATE:          State (FIPS)
+      COUNTY:         County
+      COUSUB:         County Subdivision (FIPS)
+      PLACE:          Place (FIPS Code)
+      PLACESE:        Place (State FIPS + Place FIPS)
+      TRACT:          Census Tract
+      BLKGRP:         Block Group
+      CONCIT:         Consolidated City
+      AIANHH:         American Indian Area/Alaska Native Area/Hawaiian Home Land (Census)
+      AIANHHFP:       American Indian Area/Alaska Native Area/Hawaiian Home Land (FIPS)
+      AIHHTLI:        American Indian Trust Land/Hawaiian Home Land Indicator
+      AITSCE:         American Indian Tribal Subdivision (Census)
+      AITS:           American Indian Tribal Subdivision (FIPS)
+      ANRC:           Alaska Native Regional Corporation (FIPS)
+      CBSA:           Metropolitan and Micropolitan Statistical Area
+      CSA:            Combined Statistical Area
+      METDIV:         Metropolitan Division
+      MACC:           Metropolitan Area Central City
+      MEMI:           Metropolitan/Micropolitan Indicator Flag
+      NECTA:          New England City and Town Combined Statistical Area
+      CNECTA:         New England City and Town Area
+      NECTADIV:       New England City and Town Area Division
+      UA:             Urban Area
+      UACP:           Urban Area Central Place
+      CDCURR:         Current Congressional District ***
+      SLDU:           State Legislative District Upper
+      SLDL:           State Legislative District Lower
+      VTD:            Voting District
+      ZCTA3:          ZIP Code Tabulation Area (3-digit)
+      ZCTA5:          ZIP Code Tabulation Area (5-digit)
+      SUBMCD:         Subbarrio (FIPS)
+      SDELM:          School District (Elementary)
+      SDSEC:          School District (Secondary)
+      SDUNI:          School District (Unified)
+      UR:             Urban/Rural
+      PCI:            Principal City Indicator
+      TAZ:            Traffic Analysis Zone
+      UGA:            Urban Growth Area
+      BTTR:           Tribal Tract
+      BTBG:           Tribal Block Group
+      PUMA5:          Public Use Microdata Area - 5% File
+      PUMA1:          Public Use Microdata Area - 1% File
+      A00001_001:     Total Population
+      A03001_001:     Total Population:
+      A03001_002:     Total Population: White Alone
+      A03001_003:     Total Population: Black or African American Alone
+      A03001_004:     Total Population: American Indian and Alaska Native Alone
+      A03001_005:     Total Population: Asian Alone
+      A03001_006:     Total Population: Native Hawaiian and Other Pacific Islander Alone
+      A03001_007:     Total Population: Some Other Race Alone
+      A03001_008:     Total Population: Two or More Races
+      A04001_001:     Total Population
+      A04001_002:     Total Population: Not Hispanic or Latino
+      A04001_003:     Total Population: Not Hispanic or Latino: White Alone
+      A04001_004:     Total Population: Not Hispanic or Latino: Black or African American Alone
+      A04001_005:     Total Population: Not Hispanic or Latino: American Indian and Alaska Native Alone
+      A04001_006:     Total Population: Not Hispanic or Latino: Asian Alone
+      A04001_007:     Total Population: Not Hispanic or Latino: Native Hawaiian and Other Pacific Islander Alone
+      A04001_008:     Total Population: Not Hispanic or Latino: Some Other Race Alone
+      A04001_009:     Total Population: Not Hispanic or Latino: Two or More Races
+      A04001_010:     Total Population: Hispanic or Latino
+      A04001_011:     Total Population: Hispanic or Latino: White Alone
+      A04001_012:     Total Population: Hispanic or Latino: Black or African American Alone
+      A04001_013:     Total Population: Hispanic or Latino: American Indian and Alaska Native Alone
+      A04001_014:     Total Population: Hispanic or Latino: Asian Alone
+      A04001_015:     Total Population: Hispanic or Latino: Native Hawaiian and Other Pacific Islander Alone
+      A04001_016:     Total Population: Hispanic or Latino: Some Other Race Alone
+      A04001_017:     Total Population: Hispanic or Latino: Two or More Races
+      B04001_001:     Total Population
+      B04001_002:     Total Population: Not Hispanic or Latino
+      B04001_003:     Total Population: Not Hispanic or Latino: White Alone
+      B04001_004:     Total Population: Not Hispanic or Latino: Black or African American Alone
+      B04001_005:     Total Population: Not Hispanic or Latino: American Indian and Alaska Native Alone
+      B04001_006:     Total Population: Not Hispanic or Latino: Asian Alone
+      B04001_007:     Total Population: Not Hispanic or Latino: Native Hawaiian and Other Pacific Islander Alone
+      B04001_008:     Total Population: Not Hispanic or Latino: Some Other Race Alone
+      B04001_009:     Total Population: Not Hispanic or Latino: Two or More Races
+      B04001_010:     Total Population: Hispanic or Latino
+      A04002_001:     Total Population
+      A04002_002:     Total Population: Not Hispanic or Latino
+      A04002_003:     Total Population: Hispanic or Latino
+      A04002_004:     Total Population: Hispanic or Latino: Mexican
+      A04002_005:     Total Population: Hispanic or Latino: Puerto Rican
+      A04002_006:     Total Population: Hispanic or Latino: Cuban
+      A04002_007:     Total Population: Hispanic or Latino: Dominican Republic
+      A04002_008:     Total Population: Hispanic or Latino: Central American
+      A04002_009:     Total Population: Hispanic or Latino: Central American: Costa Rican
+      A04002_010:     Total Population: Hispanic or Latino: Central American: Guatemalan
+      A04002_011:     Total Population: Hispanic or Latino: Central American: Honduran
+      A04002_012:     Total Population: Hispanic or Latino: Central American: Nicaraguan
+      A04002_013:     Total Population: Hispanic or Latino: Central American: Panamanian
+      A04002_014:     Total Population: Hispanic or Latino: Central American: Salvadoran
+      A04002_015:     Total Population: Hispanic or Latino: Central American: Other Central American
+      A04002_016:     Total Population: Hispanic or Latino: South American
+      A04002_017:     Total Population: Hispanic or Latino: South American: Argentinean
+      A04002_018:     Total Population: Hispanic or Latino: South American: Bolivian
+      A04002_019:     Total Population: Hispanic or Latino: South American: Chilean
+      A04002_020:     Total Population: Hispanic or Latino: South American: Colombian
+      A04002_021:     Total Population: Hispanic or Latino: South American: Ecuadorian
+      A04002_022:     Total Population: Hispanic or Latino: South American: Paraguayan
+      A04002_023:     Total Population: Hispanic or Latino: South American: Peruvian
+      A04002_024:     Total Population: Hispanic or Latino: South American: Uruguayan
+      A04002_025:     Total Population: Hispanic or Latino: South American: Venezuelan
+      A04002_026:     Total Population: Hispanic or Latino: South American: Other South American
+      A04002_027:     Total Population: Hispanic or Latino: Other Hispanic or Latino
+      A04002_028:     Total Population: Hispanic or Latino: Other Hispanic or Latino: Spaniard
+      A04002_029:     Total Population: Hispanic or Latino: Other Hispanic or Latino: Spanish
+      A04002_030:     Total Population: Hispanic or Latino: Other Hispanic or Latino: Spanish American
+      A04002_031:     Total Population: Hispanic or Latino: Other Hispanic or Latino: All Other Hispanic or Latino
+
+
+
+
+--------------------------------------------------------------------------------
+Citation and Use of Data
+--------------------------------------------------------------------------------
+ 
+All persons are granted a limited license to use this documentation and the
+accompanying data, subject to the following conditions:
+
+* Publications and research reports employing the data
+  must cite it appropriately. The citation should include the following:
+
+	  www.socialexplorer.com
+	  New York City, NY: Social Explorer 2020
+
+
+* Citations should also include the URL for this report:
+
+    http://www.socialexplorer.com/pub/reportdata/HtmlResults.aspx?reportid=R12592984
+
+If you have any questions contact info@socialexplorer.com

@@ -1,0 +1,29 @@
+{
+    "id": "51B24A8E",
+    "path": "~/Documents/Work Files/Volunteer Work/COVID-Tracking Project/county_city_disparities/county_city_viz_builder.Rmd",
+    "project_path": "county_city_viz_builder.Rmd",
+    "type": "r_markdown",
+    "hash": "1123983108",
+    "contents": "",
+    "dirty": false,
+    "created": 1598989021965.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "chunk_output_type": "inline",
+        "cursorPosition": "274,7",
+        "scrollLine": "260",
+        "docOutlineVisible": "1",
+        "docOutlineSize": "170",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1599666323,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1599666323401,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,27 @@
+"0","orig_data <- read_csv(""original_methodology/200903_Michigan_Calc.csv"") %>% 
+  clean_names() %>%
+  separate(col=sheet_name, into=c(""state"", ""area""), sep=2) %>% 
+  mutate(date_date = as_date(date_date)) %>% 
+  select(-x1,date=date_date)
+"
+"2","Parsed with column specification:
+cols(
+  .default = col_double(),
+  Date_Date = [34mcol_date(format = """")[39m,
+  Sheet.Name = [31mcol_character()[39m,
+  cases_per_pop_latinx = [33mcol_logical()[39m,
+  cases_per_pop_multi = [33mcol_logical()[39m,
+  cases_per_pop_hispanic = [33mcol_logical()[39m,
+  cases_per_pop_nonhispanic = [33mcol_logical()[39m,
+  deaths_per_pop_latinx = [33mcol_logical()[39m,
+  deaths_per_pop_multi = [33mcol_logical()[39m,
+  deaths_per_pop_hispanic = [33mcol_logical()[39m,
+  deaths_per_pop_nonhispanic = [33mcol_logical()[39m,
+  case_fatality_latinx = [33mcol_logical()[39m,
+  case_fatality_multi = [33mcol_logical()[39m,
+  case_fatality_hispanic = [33mcol_logical()[39m,
+  case_fatality_nonhispanic = [33mcol_logical()[39m
+)
+"
+"2","See spec(...) for full column specifications.
+"

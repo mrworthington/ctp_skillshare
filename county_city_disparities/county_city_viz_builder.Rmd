@@ -1,0 +1,317 @@
+---
+title: "CTP Notebook"
+author: "Matt Worthington"
+output:
+  html_notebook:
+    code_folding: show
+    theme: paper
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+---
+  
+# Load Packages
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(tidycensus)
+library(grid)
+library(ggtext)
+library(cowplot)
+library(hrbrthemes)
+readRenviron("~/.Renviron")
+census_api_key <- Sys.getenv("CENSUS_API_KEY")
+```
+
+# Set CTP Style
+
+```{r echo=TRUE}
+theme_ctp <- function(base_size=14,base_family="SF Pro Text",title_size=18, subtitle_size=14, caption_size=10, ...) {
+  ggplot2::theme_minimal(base_size = base_size,base_family = base_family,...) +
+    ggplot2::theme(plot.title = ggplot2::element_text(size = title_size, color= "#2d2d2d", family = "SFProDisplay-Heavy", margin = margin(t=0, r=0, b=4, l=0)),
+                   plot.subtitle = ggplot2::element_text(size = subtitle_size, family = "SFProDisplay-Regular", margin = margin(t=0, r=0, b=4, l=0)),
+                   plot.caption = ggplot2::element_text(family="SFProDisplay-Regular", color="#8d8d8d",size=caption_size, lineheight = 1, hjust = 0, vjust=-5,
+                                                        margin = margin(t=4, r=0, b=4, l=0)),
+                   plot.margin = ggplot2::unit(c(t=1.75, r=1.5, b=2, l=1), "lines"),
+                   axis.title.x = ggplot2::element_text(family="SFProText-Bold", size=8, color="#5d5d5d", hjust=1),
+                   axis.title.y = ggplot2::element_text(family="SFProText-Bold", size=8, color="#5d5d5d", hjust=1),
+                   strip.text = element_text(family="SFProText-Bold", color="#ffffff"),
+                   strip.background = element_rect(color="#2d2d2d", fill="#2d2d2d"),
+                   legend.title = element_text(family="SFProText-Bold", color="#8d8d8d"),
+                   axis.line.x =  ggplot2::element_line(color="#3d3d3d", size=.5),
+                   panel.grid.major.y = ggplot2::element_line(color="#e3e3e3"),
+                   panel.grid.minor.y = ggplot2::element_line(linetype=2, size=0, color="#e3e3e3"),
+                   panel.grid.major.x = ggplot2::element_blank(),
+                   panel.grid.minor.x = ggplot2::element_blank(),
+                   axis.ticks.x = ggplot2::element_line(size = .5))
+}
+```
+
+# Process Core Data
+
+## ACS 2018 5-Year Data
+
+```{r place_data, echo=TRUE, message=TRUE, warning=FALSE}
+
+vars <- load_variables(2018,"acs5", cache=TRUE)
+
+demvars <-  c(White = "B03002_003",
+              Black = "B03002_004",
+              Asian = "B03002_006",
+              Hispanic = "B03002_012",
+              AIAN = "B03002_005",
+              HNPI = "B03002_007")
+
+detroit_msa_data <- get_acs(geography = "place", 
+                            variables = demvars,
+                            state="MI",
+                            survey = "acs5",
+                            show_call = TRUE,
+                            summary_var = "B01003_001") %>% 
+  filter(str_detect(NAME, "Detroit city")) %>%
+  mutate(pct_group_tot = round(estimate/summary_est, digits=4)) %>% 
+  mutate(area="Detroit") %>% 
+  clean_names() %>% 
+  select(-geoid, -contains("moe")) %>% 
+  select(name, area, group=variable, group_pop=estimate, tot_pop = summary_est, pct_group_tot)
+
+wayne_county <- get_acs(geography="county",
+                         variables=demvars,
+                         state="MI",
+                         county="Wayne",
+                         survey = "acs5",
+                         show_call = TRUE,
+                         summary_var = "B01003_001") %>% 
+  mutate(pct_group_tot = round(estimate/summary_est, digits=4)) %>% 
+  mutate(area="Wayne County") %>% 
+  clean_names() %>% 
+  select(-geoid, -contains("moe")) %>% 
+  select(name, area, group=variable, group_pop=estimate, tot_pop = summary_est, pct_group_tot)
+
+mi_data <- bind_rows(detroit_msa_data, 
+                     wayne_county) %>% 
+  mutate(state="MI") %>% 
+  select(-name)
+
+head(mi_data, 10)
+```
+
+## CTP Case Count Data (Google Spreadsheet)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+gs_csv <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRCDQ4lR_b_hJ5BB62Wgy65dVt7iYlNh7-QxWONtIoTXLZtTonF_jtJsl4kvevRGKJPj1SW42NBn4JC/pub?gid=1629152806&single=true&output=csv"
+
+city_cnty_df <- read_csv(gs_csv) %>% 
+  clean_names() %>%
+  separate(col=date, into=c("year", "days"), sep=4) %>% 
+  separate(col=days, into=c("month", "day"), sep=2) %>% 
+  unite(date, c("year", "month", "day"), sep="-") %>% 
+  mutate(date=ymd(date)) %>% 
+  rename(area=what_is_this_tracking)
+
+head(city_cnty_df,10)
+
+```
+
+## Catherine's Workbook
+
+```{r}
+
+orig_data <- read_csv("original_methodology/200903_Michigan_Calc.csv") %>% 
+  clean_names() %>%
+  separate(col=sheet_name, into=c("state", "area"), sep=2) %>% 
+  mutate(date_date = as_date(date_date)) %>% 
+  select(-x1,date=date_date)
+
+head(orig_data, 10)
+
+```
+
+# Create Figure 3c Plot
+
+## Organize Figure 3c Data
+
+```{r message=FALSE, warning=FALSE}
+
+fig3c <- orig_data %>% 
+  filter(state=="MI",
+         date>=as_date("2020-07-01") & date<=as_date("2020-08-03")) %>% 
+  select(date,state,area, starts_with("cases_per_pop_")) %>% 
+  rename_with(., ~ gsub("cases_per_pop_","", .)) %>% 
+  pivot_longer(cols=4:13, names_to = "group", values_to="cases_per100k") %>% 
+  # drop_na(cases_per100k) %>% 
+  filter(!str_detect(group,"total|unknown|other")) %>% 
+  mutate(group=str_to_title(group),
+         group=str_replace(group, "Hnpi", "HNPI"),
+         group=str_replace(group, "Aian", "AIAN"),
+         area=str_replace(area, "WayneCounty", "Wayne County\n(without Detroit)"),
+         area=str_replace(area, "WayneWITHDetroit", "Wayne County\n(with Detroit)"))
+
+head(fig3c, 10)
+
+```
+
+
+## Draw Figure 3c
+
+```{r fig.width=14, fig.height = 7, message=FALSE, warning=FALSE}
+
+get_png <- function(filename) {
+  grid::rasterGrob(png::readPNG(filename), interpolate = TRUE)
+}
+
+l <- get_png("logo.png")
+
+p1 <-
+  fig3c %>% 
+  ggplot(aes(x=date, y=cases_per100k, group=group, color=group)) +
+  geom_smooth(size=1.5, fill=NA) +
+  facet_grid(~area) +
+  guides(color=guide_legend(direction="horizontal", 
+                            title.position = "left",
+                            title.hjust = 0.5,
+                            nrow=2)) +
+  labs(title = "COVID-19 CASE COUNTS PER 100k | By Race",
+       subtitle = "Between July 1st + August 4th",
+       color = "Group",
+       caption = "Note: This is the note\nSource: The COVID Tracking Project",
+       x=NULL,
+       y=NULL) +
+  theme_ctp() +
+  # scale_color_manual(values=c("White"="#8BADD3", "Black"="#A5D7D8", "Asian"="#7BB2ED", "AIAN"="#EB3C33", "HNPI"="#4C5153"))+
+  scale_y_comma(limits=c(200,2000)) +
+  theme(plot.title = element_text(margin = margin(t=0, r=0, b=10, l=0)),
+        plot.subtitle = element_text( margin = margin(t=0, r=0, b=20, l=0)),
+        plot.caption = element_text(size=12, margin = margin(t=15, r=0, b=4, l=0), color="#5d5d5d"),
+        plot.margin = unit(c(t=1.75, r=1.5, b=3, l=1), "lines"),
+        legend.position = c(.8,1.22),
+        strip.text = element_text(family="SFProDisplay-Heavy", color="#2d2d2d", size = 14),
+        strip.background = element_rect(fill="#ffffff", color=NA),
+        panel.border = element_rect(colour = "black", fill=NA, size=0))
+
+logo_file <- magick::image_read("logo.png")
+
+ggdraw(p1) + 
+  draw_image(logo_file, x = .98, y = 0.148, hjust = 1, vjust = 1, width = 0.05, height = 0.14) +
+  draw_line(
+    x = c(0.055, 0.92),
+    y = c(0.07, 0.07),
+    color = "#74859C", size = .5
+  ) +
+  draw_line(
+    x = c(0.055, 0.92),
+    y = c(0.08, 0.08),
+    color = "#74859C", size = .5
+  ) +
+  draw_text("By INSERT NAME | The COVID Tracking Project", 
+            x = 0.18, y = 0.04, size = 10, color = "#849096") +
+  ggsave("wayne_detroit_cases_per.png", dpi=350, width =12 , height =6.5) +
+  ggsave("wayne_detroit_cases_per.eps", dpi=350, width =12 , height =6.5)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+
+# Create Figure 7c Plot
+
+## Organize Figure 7c Data
+
+```{r message=FALSE, warning=FALSE}
+
+fig7c <- orig_data %>% 
+  filter(state=="MI",
+         date>=as_date("2020-07-01") & date<=as_date("2020-08-03")) %>% 
+  select(date,state,area, starts_with("case_fatality_")) %>% 
+  remove_empty(which="cols") %>% 
+  select(-ends_with("_total"), -ends_with("_unknown"), -ends_with("_other")) %>% 
+  # mutate(white_ft_rate = deaths_white/cases_white,
+  #        black_ft_rate = deaths_black/cases_black,
+  #        asian_ft_rate = deaths_asian/cases_asian,
+  #        aian_ft_rate = deaths_aian/cases_aian,
+  #        hnpi_ft_rate = deaths_hnpi/cases_hnpi) %>% 
+  # select(date,state,area, ends_with("_ft_rate")) %>% 
+  # rename_with(., ~ gsub("cases_","", .)) %>% 
+  pivot_longer(cols=4:8, names_to = "group", values_to="case_fatality_rate") %>%
+  # drop_na(case_fatality_rate) %>%
+  # filter(case_fatality_rate!="N/A")
+  # filter(!str_detect(group,"total|unknown|other")) %>% 
+  mutate(group=str_replace(group, "case_fatality_",""),
+         case_fatality_rate = round(case_fatality_rate/100, digits=5)) %>% 
+  mutate(group=str_to_title(group),
+         group=str_replace(group, "Hnpi", "HNPI"),
+         group=str_replace(group, "Aian", "AIAN"),
+         group=str_replace(group, "_ft_rate", ""),
+         area=str_replace(area, "WayneCounty", "Wayne County\n(without Detroit)"),
+         area=str_replace(area, "WayneWITHDetroit", "Wayne County\n(with Detroit)"))
+
+
+head(fig7c, 10)
+
+```
+
+
+## Draw Figure 7c
+
+```{r fig.width=14, fig.height = 7, message=FALSE, warning=FALSE}
+
+get_png <- function(filename) {
+  grid::rasterGrob(png::readPNG(filename), interpolate = TRUE)
+}
+
+l <- get_png("logo.png")
+
+p1 <-
+  fig7c %>% 
+  ggplot(aes(x=date, y=case_fatality_rate, group=group, color=group)) +
+  geom_smooth(size=1.5, fill=NA) +
+  facet_grid(~area) +
+  guides(color=guide_legend(direction="horizontal", 
+                            title.position = "left",
+                            title.hjust = 0.5,
+                            nrow=2)) +
+  labs(title = "COVID-19 CASE FATALITY | By Race",
+       subtitle = "Between July 1st + August 4th",
+       color = "Group",
+       caption = "Note: This is the note\nSource: The COVID Tracking Project",
+       x=NULL,
+       y=NULL) +
+  theme_ctp() +
+  scale_color_manual(values=c("White"="#8BADD3", "Black"="#A5D7D8", "Asian"="#7BB2ED", "AIAN"="#EB3C33", "HNPI"="#4C5153")) +
+  scale_y_percent(limits=c(-.10,.20)) +
+  theme(plot.title = element_text(margin = margin(t=0, r=0, b=10, l=0)),
+        plot.subtitle = element_text( margin = margin(t=0, r=0, b=20, l=0)),
+        plot.caption = element_text(size=12, margin = margin(t=15, r=0, b=4, l=0), color="#5d5d5d"),
+        plot.margin = unit(c(t=1.75, r=1.5, b=3, l=1), "lines"),
+        legend.position = c(.8,1.22),
+        strip.text = element_text(family="SFProDisplay-Heavy", color="#2d2d2d", size = 14),
+        strip.background = element_rect(fill="#ffffff", color=NA),
+        panel.border = element_rect(colour = "black", fill=NA, size=0))
+
+logo_file <- magick::image_read("logo.png")
+
+ggdraw(p1) + 
+  draw_image(logo_file, x = .98, y = 0.148, hjust = 1, vjust = 1, width = 0.05, height = 0.14) +
+  draw_line(
+    x = c(0.043, 0.92),
+    y = c(0.07, 0.07),
+    color = "#74859C", size = .5
+  ) +
+  draw_line(
+    x = c(0.043, 0.92),
+    y = c(0.08, 0.08),
+    color = "#74859C", size = .5
+  ) +
+  draw_text("By INSERT NAME | The COVID Tracking Project", 
+            x = 0.168, y = 0.04, size = 10, color = "#849096") +
+  ggsave("wayne_detroit_case_fatality_rate.png", dpi=350, width =12 , height =6.5) +
+  ggsave("wayne_detroit_case_fatality_rate.eps", dpi=350, width =12 , height =6.5)
+```
+

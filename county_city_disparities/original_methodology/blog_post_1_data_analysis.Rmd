@@ -1,0 +1,568 @@
+---
+title: "Blog Post Supplemental Code"
+author: "Catherine C. Pollack"
+date: "7/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Bring in Libraries and Packages
+```{r, message = FALSE}
+list.of.packages <- c("tidyverse", "lubridate", "magrittr", "RColorBrewer", "lmerTest", "reshape2", "ggsci")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(tidyverse) #For data processing and analysis
+library(lubridate) #For date processing
+library(magrittr) #For %<>%
+library(RColorBrewer) #For Color Scheme
+library(lmerTest) #For mixed-effects modeling
+library(reshape2) #Restructuring dataset for mapping
+library(ggsci) #For wider color palettes
+```
+
+# Dataframes
+```{r}
+#Set working directory
+setwd("~/Documents/COVIDTrackingProject/Data Cities/Blog Post 1/Data")
+dat <- read.csv("AZ and MI - Sheet2.csv")
+pop_county <- read.csv("R12592984_SL050.csv", stringsAsFactors = FALSE)
+pop_cities <- read.csv("R12592984_SL321.csv", stringsAsFactors = FALSE)
+
+pop <- rbind(pop_county, pop_cities)
+pop <- pop[,colSums(is.na(pop))<nrow(pop)]
+
+dat_blog  <- dat %>% 
+  filter(State == "TX" | 
+           State == "WA" | 
+           State == "VA" | 
+           State == "MI" | 
+           State == "NC" | 
+           State == "AZ" | 
+           State == "GA")
+arizona_denom <- read.csv("ArizonaData.csv")
+michigan_denom <- read.csv("MichiganData.csv")
+#policies <- read.csv(url('https://raw.githubusercontent.com/saudiwin/corona_tscs/master/data/CoronaNet/coronanet_release.csv'))
+state_race <- read.csv("Race Data Entry - CRDT.csv")
+```
+
+# Variable Creation
+```{r}
+#Updating counties to match
+dat_blog$What.is.this.tracking. <- as.character(dat_blog$What.is.this.tracking.)
+dat_blog$Cases_Total <- as.numeric(as.character(dat_blog$Cases_Total))
+dat_blog$Date_Date <- as.Date(as.character(dat_blog$DATE), format = "%Y%m%d")
+dat_blog$Deaths_Total <- as.numeric(as.character(dat_blog$Deaths_Total))
+dat_blog$case_fatality <- as.numeric(as.character(dat_blog$Case_Fatality_Rate))
+dat_blog$Daily_New_Cases <- as.numeric(as.character(dat_blog$Daily_New_Cases))
+
+# Check to see which counties already match and which need to be changed
+for (place in unique(dat_blog$What.is.this.tracking.)) {
+  if (!(place %in% pop$Geo_NAME)) {
+    print(place)
+  }
+}
+
+#Modifying variable names in CTP to match the ones in the pop file
+dat_blog %<>% mutate(county_city_new = case_when(
+  What.is.this.tracking. == "Dekalb County" ~ "DeKalb County",
+  What.is.this.tracking. == "City of Detroit" ~ "Detroit city; Detroit-Warren-Dearborn",
+  What.is.this.tracking. == "Detroit" ~ "Detroit city; Detroit-Warren-Dearborn",
+  What.is.this.tracking. == "City of El Paso" ~ "El Paso city; El Paso",
+  What.is.this.tracking. == "City of Houston" ~ "Houston city; Houston-The Woodlands-Sugar Land",
+  What.is.this.tracking. == "City of Arlington" ~ "Arlington CDP; Washington-Arlington-Alexandria",
+  What.is.this.tracking. == "City of Hampton" ~ "Hampton city; Virginia Beach-Norfolk-Newport News",
+  What.is.this.tracking. == "City of Richmond" ~ "Richmond city; Richmond",
+  What.is.this.tracking. == "City of Virginia Beach" ~ "Virginia Beach city; Virginia Beach-Norfolk-Newport News",
+  What.is.this.tracking. == "City of Bellevue" ~ "Bellevue city; Seattle-Tacoma-Bellevue",
+  What.is.this.tracking. == "City of Seattle" ~ "Seattle city; Seattle-Tacoma-Bellevue",
+  What.is.this.tracking. == "Harris County WITH Houston" ~ "Harris County",
+  TRUE ~ What.is.this.tracking.
+))
+
+# Check to see which counties already match and which need to be changed
+for (place in unique(dat_blog$county_city_new)) {
+  if (!(place %in% pop$Geo_NAME)) {
+    print(place)
+  }
+}
+# Creating new row for Gwinnett/Rockdale/Newton combo
+numeric_columns <- which(unlist(lapply(pop, is.numeric)))
+pop[nrow(pop) + 1,numeric_columns] <- colSums(pop[22:24,numeric_columns], na.rm=TRUE)
+pop[nrow(pop), 1:14] <- c(NA, NA, "Gwinnett, Rockdale, and Newton Counties", "Gwinnett, Rockdale, and Newton Counties, Georgia", "ga", 50, 0, "ACSSF", NA, 13, NA, NA, NA, NA)
+#View(pop[c(22:24, nrow(pop)),])
+
+# Creating new row for Harris County WITHOUT Houston
+pop[nrow(pop) + 1,15:50] <- pop[37,15:50] - pop[73,15:50]
+pop[nrow(pop), 1:14] <- c(NA, NA, "Harris County WITHOUT Houston", "Harris County WITHOUT Houston, Texas", "tx", NA, 0, "ACSSF", NA, 48, NA, NA, NA, NA)
+#View(pop[c(37, 73, nrow(pop)),])
+
+
+#Adding in just the population
+dat_blog %<>%
+  inner_join(pop, by = c("county_city_new" = "Geo_NAME"))
+
+
+#NOTE: Wayne County estimates do NOT include Detroit estimates. Have to adjust the denominator to be Wayne County WITHOUT Detroit
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A00001_001"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A00001_001"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A00001_001"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_003"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_003"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_003"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_004"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_004"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_004"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_010"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_010"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_010"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_006"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_006"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_006"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_005"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_005"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_005"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_007"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_007"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_007"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_009"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_009"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_009"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_008"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_008"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_008"]
+dat_blog[which(dat_blog$Sheet.Name == "MIWayneCounty"), "SE_A04001_002"] <- pop_county[which(pop_county$Geo_NAME == "Wayne County"), "SE_A04001_002"] - pop_cities[which(pop_cities$Geo_NAME == "Detroit city; Detroit-Warren-Dearborn"), "SE_A04001_002"]
+
+
+dat_blog$cases_per_pop <- dat_blog$Cases_Total/dat_blog$SE_A00001_001 * 100000
+dat_blog$deaths_per_pop <- dat_blog$Deaths_Total/dat_blog$SE_A00001_001 * 100000
+
+
+### NEED TO ADJUST THESE RACE DENOMINATORS 
+dat_blog[7:31] <- sapply(dat_blog[7:31], function(x) {as.numeric(as.character(x))})
+
+dat_blog %<>% mutate(cases_per_pop_white = Cases_White/SE_A04001_003 * 100000,
+                 cases_per_pop_black = Cases_Black/SE_A04001_004 * 100000,
+                 cases_per_pop_latinx = Cases_LatinX/SE_A04001_010 * 100000,
+                 cases_per_pop_asian = Cases_Asian/SE_A04001_006 * 100000,
+                 cases_per_pop_aian = Cases_AIAN/SE_A04001_005 * 100000,
+                 cases_per_pop_hnpi = Cases_HNPI/SE_A04001_007 * 100000,
+                 cases_per_pop_asian_hnpi = Cases_Asian/(SE_A04001_006 + SE_A04001_007) * 100000, #ARIZONA ONLY
+                 cases_per_pop_multi = Cases_Multiracial/SE_A04001_009 * 100000,
+                 cases_per_pop_other = Cases_Other/SE_A04001_008 * 100000,
+                 cases_per_pop_hispanic = Cases_Ethnicity_Hispanic/SE_A04001_010 * 100000,
+                 cases_per_pop_nonhispanic = Cases_Ethnicity_NonHispanic/SE_A04001_002 * 100000,
+                 deaths_per_pop_white = Deaths_White/SE_A04001_003 * 100000,
+                 deaths_per_pop_black = Deaths_Black/SE_A04001_004 * 100000,
+                 deaths_per_pop_latinx = Deaths_LatinX/SE_A04001_010 * 100000,
+                 deaths_per_pop_asian = Deaths_Asian/SE_A04001_006 * 100000,
+                 deaths_per_pop_aian = Deaths_AIAN/SE_A04001_005 * 100000,
+                 deaths_per_pop_hnpi = Deaths_HNPI/SE_A04001_007 * 100000,
+                 deaths_per_pop_asian_hnpi = Cases_Asian/(SE_A04001_006 + SE_A04001_007) * 100000, #ARIZONA ONLY
+                 deaths_per_pop_multi = Deaths_Multiracial/SE_A04001_009 * 100000,
+                 deaths_per_pop_other = Deaths_Other/SE_A04001_008 * 100000,
+                 deaths_per_pop_hispanic = Deaths_Ethnicity_Hispanic/SE_A04001_010 * 100000,
+                 deaths_per_pop_nonhispanic = Deaths_Ethnicity_NonHispanic/SE_A04001_002 * 100000)
+
+dat_blog %<>% mutate(case_fatality_white = Deaths_White/Cases_White * 100,
+                     case_fatality_black = Deaths_Black/Cases_Black * 100,
+                     case_fatality_latinx = Deaths_LatinX/Cases_LatinX * 100,
+                     case_fatality_asian = Deaths_Asian/Cases_Asian * 100,
+                     case_fatality_aian = Deaths_AIAN/Cases_AIAN * 100,
+                     case_fatality_hnpi = Deaths_HNPI/Cases_HNPI * 100,
+                     case_fatality_multi = Deaths_Multiracial/Cases_Multiracial * 100,
+                     case_fatality_other = Deaths_Other/Cases_Other * 100,
+                     case_fatality_hispanic = Deaths_Ethnicity_Hispanic/Cases_Ethnicity_Hispanic * 100,
+                     case_fatality_nonhispanic = Deaths_Ethnicity_NonHispanic/Cases_Ethnicity_NonHispanic * 100)
+
+race_cases <-  dat_blog %>%
+  melt(id.vars = c("State", "Sheet.Name", "Date_Date"), 
+       measure.vars = c("cases_per_pop_white", "cases_per_pop_black", "cases_per_pop_latinx",
+                        "cases_per_pop_asian", "cases_per_pop_aian", "cases_per_pop_hnpi", "cases_per_pop_asian_hnpi",
+                        "cases_per_pop_multi", "cases_per_pop_other", "cases_per_pop_hispanic", "cases_per_pop_nonhispanic"))
+
+race_deaths <-dat_blog %>%
+  melt(id.vars = c("State", "Sheet.Name", "Date_Date"), 
+       measure.vars = c("deaths_per_pop_white",
+                        "deaths_per_pop_black", "deaths_per_pop_latinx", "deaths_per_pop_asian", "deaths_per_pop_aian",
+                        "deaths_per_pop_hnpi", "deaths_per_pop_asian_hnpi", "deaths_per_pop_multi", "deaths_per_pop_other",
+                        "deaths_per_pop_hispanic", "deaths_per_pop_nonhispanic"))
+
+race_case_fatality <- dat_blog %>%
+    melt(id.vars = c("State", "Sheet.Name", "Date_Date"), 
+       measure.vars = c("case_fatality_white",
+                        "case_fatality_black", "case_fatality_latinx", "case_fatality_asian", "case_fatality_aian",
+                        "case_fatality_hnpi", "case_fatality_multi", "case_fatality_other",
+                        "case_fatality_hispanic", "case_fatality_nonhispanic"))
+
+race_cases_noother <- filter(race_cases, variable != "cases_per_pop_other" & variable != "cases_per_pop_hispanic" & variable != "cases_per_pop_nonhispanic")
+
+dat_blog$deaths_per_pop <- dat_blog$Deaths_Total/dat_blog$SE_A00001_001 * 100000
+
+```
+
+# Denominator Dataset Cleaning
+```{r}
+state_race$Date <- as.character(state_race$Date )
+state_race$Date_Date <- as.Date(state_race$Date, format = "%Y%m%d") 
+
+arizona_denom$cases_num <- str_replace(arizona_denom$Cases, ",", "")
+arizona_denom$cases_num <- as.numeric(arizona_denom$cases_num)
+arizona_denom$cases_per_pop <- arizona_denom$cases_num/6946685 * 100000 #6946685 from Census
+arizona_denom$Date_Date <- as.Date(arizona_denom$Date, format = "%a %b %d %Y")
+
+arizona_denom$deaths_num <- str_replace(arizona_denom$Deaths, ",", "")
+arizona_denom$deaths_num <- as.numeric(arizona_denom$deaths_num)
+arizona_denom$deaths_per_pop <- arizona_denom$deaths_num/6946685 * 100000 #6946685 from Census
+
+arizona_denom$case_fatality <- arizona_denom$deaths_num/arizona_denom$cases_num * 100
+arizona_denom_race <- state_race %>%
+  filter(State == "AZ" & Date_Date >= "2020-06-03")
+
+michigan_denom$cases_num <- str_replace(michigan_denom$Cases, ",", "")
+michigan_denom$cases_num <- as.numeric(michigan_denom$cases_num)
+michigan_denom$cases_per_pop <- michigan_denom$cases_num/9957488 * 100000 #6946685 from Census
+michigan_denom$Date_Date <- as.Date(michigan_denom$Date, format = "%a %b %d %Y")
+
+michigan_denom$deaths_num <- str_replace(michigan_denom$Deaths, ",", "")
+michigan_denom$deaths_num <- as.numeric(michigan_denom$deaths_num)
+michigan_denom$deaths_per_pop <- michigan_denom$deaths_num/9957488 * 100000 #6946685 from Census
+
+michigan_denom$case_fatality <- michigan_denom$deaths_num/michigan_denom$cases_num * 100
+michigan_denom_race <- state_race %>%
+  filter(State == "MI" & Date_Date >= "2020-06-03")
+
+```
+
+#Arizona Only Cases
+```{r}
+dat_blog_arizona <- filter(dat_blog, State == "AZ" & Date_Date >= "2020-06-03")
+
+#setwd("~/Documents/COVIDTrackingProject/Output")
+ggplot(dat_blog_arizona, aes(x = Date_Date, y = cases_per_pop, color = Sheet.Name)) +
+  geom_point() +
+  geom_smooth(method = "lm", alpha = 0.5) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7.5),
+        axis.text.y = element_text(size = 7.5)) +
+  labs(x = "Date (Month Day)",
+       y = "Cases Per 100,000",
+       title = "Cumulative COVID-19 Cases Per 100,000 in Maricopa and Pima Counties, Arizona\n06.03.20 through 08.04.20") +
+  scale_color_aaas(name = "County",
+                       labels = c("Maricopa", "Pima"))
+#ggsave("200806_Cases_AZ.tiff", width = 7.29, height = 4.51)
+
+summary(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_arizona, Sheet.Name == "AZPhoenix")))
+summary(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_arizona, Sheet.Name == "AZTucson")))
+
+summary(lm(cases_per_pop ~ Date_Date, data = arizona_denom)) #7,9
+
+confint(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_arizona, Sheet.Name == "AZPhoenix")))
+confint(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_arizona, Sheet.Name == "AZTucson")))
+
+confint(lm(cases_per_pop ~ Date_Date, data = arizona_denom)) #7,9
+
+race_cases_noother$Sheet.Name <- as.character(race_cases_noother$Sheet.Name)
+race_cases_noother_arizon <- race_cases_noother %>%
+  filter(variable != "cases_per_pop_asian" & variable != "cases_per_pop_hnpi") #Combined Asian + HNPI
+
+labels <- c(AZPhoenix = "Maricopa", AZTucson = "Pima")
+
+ggplot(filter(race_cases_noother_arizon, State == "AZ" & Date_Date >= "2020-06-03"), aes(x = Date_Date, y = value, color = variable)) +
+  geom_point() +
+  facet_wrap(~Sheet.Name,
+             labeller = labeller(Sheet.Name = labels)) +
+  theme_bw() +
+  scale_color_jco(name = "Race",
+                  labels = c("White", "Black", "LatinX", "American Indian or Alaska Native", 
+                             "Asian or Pacific Islander", "Multiracial")) +
+  labs(x = "Date",
+       y = "Case Count Per 100,000",
+       title = "COVID 19 Case Counts Per 100,000 by Race, 06.03.20 through 08.04.20")
+#setwd("~/Documents/COVIDTrackingProject/Output")
+#ggsave("200806_CasesRace_AZ.tiff", width = 7.29, height = 4.51)
+
+
+summary(aov(value ~ variable*Date_Date, data = filter(race_cases_noother, Sheet.Name == "AZPhoenix")))
+summary(lm(value ~ variable*Date_Date, data = filter(race_cases_noother, Sheet.Name == "AZTucson")))
+
+TukeyHSD(aov(value ~ variable*Date_Date, data = filter(race_cases_noother, Sheet.Name == "AZPhoenix")))
+TukeyHSD(aov(value ~ variable*Date_Date, data = filter(race_cases_noother, Sheet.Name == "AZTucson")))
+
+```
+
+# Arizona Only Case Fatality
+```{r}
+arizona_denom$Sheet.Name <- "Arizona"
+arizona_denom %<>% filter(Date_Date >= "2020-06-03")
+case_fatality_arizona <- rbind(select(dat_blog_arizona, Date_Date, case_fatality, Sheet.Name), select(arizona_denom, Date_Date, case_fatality, Sheet.Name))
+
+#setwd("~/Documents/COVIDTrackingProject/Output")
+ggplot(case_fatality_arizona, aes(x = Date_Date, y = case_fatality, color = Sheet.Name)) +
+  geom_point() +
+  geom_smooth(alpha = 0.5) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7.5),
+        axis.text.y = element_text(size = 7.5)) +
+  labs(x = "Date (Month Day)",
+       y = "Case Fatality (%)",
+       title = "Case Fatality in Maricopa and Pima Counties, Arizona\n06.03.20 through 08.04.20") +
+  scale_color_aaas(name = "Location",
+                       labels = c("Maricopa County", "Pima County", "Arizona"))
+#ggsave("200806_CaseFatality_AZ.tiff", width = 7.29, height = 4.51)
+
+case_fatality_arizona %>%
+  group_by(Sheet.Name) %>%
+  summarise(mean(case_fatality, na.rm = TRUE))
+```
+
+# Michigan Data Manipulation
+```{r}
+dat_blog_michigan <- filter(dat_blog, State == "MI" & Date_Date >= "2020-06-03")
+dat_blog_detroit <- filter(dat_blog_michigan, Sheet.Name == "MIDetroit")
+dat_blog_wayne <- filter(dat_blog_michigan, Sheet.Name == "MIWayneCounty")
+dat_blog_michigan_wide <- full_join(dat_blog_wayne, dat_blog_detroit, by = "Date_Date")
+
+## x is Wayne County, y is Detroit -- NED TO ADD TO GET WAYNE WITH DETROIT
+dat_blog_michigan_wide$wayne_pop_plus_detroit <- dat_blog_michigan_wide$SE_A00001_001.x + dat_blog_michigan_wide$SE_A00001_001.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_white <- dat_blog_michigan_wide$SE_A04001_003.x + dat_blog_michigan_wide$SE_A04001_003.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_black <- dat_blog_michigan_wide$SE_A04001_004.x + dat_blog_michigan_wide$SE_A04001_004.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_latinx <- dat_blog_michigan_wide$SE_A04001_010.x + dat_blog_michigan_wide$SE_A04001_010.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_asian <- dat_blog_michigan_wide$SE_A04001_006.x + dat_blog_michigan_wide$SE_A04001_006.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_aian <- dat_blog_michigan_wide$SE_A04001_005.x + dat_blog_michigan_wide$SE_A04001_005.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_hnpi <- dat_blog_michigan_wide$SE_A04001_007.x + dat_blog_michigan_wide$SE_A04001_007.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_multiracial <- dat_blog_michigan_wide$SE_A04001_009.x + dat_blog_michigan_wide$SE_A04001_009.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_other <- dat_blog_michigan_wide$SE_A04001_008.x + dat_blog_michigan_wide$SE_A04001_008.y
+dat_blog_michigan_wide$wayne_pop_plus_detroit_non_hispanic <- dat_blog_michigan_wide$SE_A04001_002.x + dat_blog_michigan_wide$SE_A04001_002.y
+
+dat_blog_michigan_wide$Daily_New_Cases <- dat_blog_michigan_wide$Daily_New_Cases.x + dat_blog_michigan_wide$Daily_New_Cases.y
+dat_blog_michigan_wide$Cases_White <- dat_blog_michigan_wide$Cases_White.x + dat_blog_michigan_wide$Cases_White.y
+dat_blog_michigan_wide$Cases_Black <- dat_blog_michigan_wide$Cases_Black.x + dat_blog_michigan_wide$Cases_Black.y
+dat_blog_michigan_wide$Cases_LatinX <- dat_blog_michigan_wide$Cases_LatinX.x + dat_blog_michigan_wide$Cases_LatinX.y
+dat_blog_michigan_wide$Cases_Asian <- dat_blog_michigan_wide$Cases_Asian.x + dat_blog_michigan_wide$Cases_Asian.y
+dat_blog_michigan_wide$Cases_AIAN <- dat_blog_michigan_wide$Cases_AIAN.x + dat_blog_michigan_wide$Cases_AIAN.y
+dat_blog_michigan_wide$Cases_HNPI <- dat_blog_michigan_wide$Cases_HNPI.x + dat_blog_michigan_wide$Cases_HNPI.y
+dat_blog_michigan_wide$Cases_Multiracial <- dat_blog_michigan_wide$Cases_Multiracial.x + dat_blog_michigan_wide$Cases_Multiracial.y
+dat_blog_michigan_wide$Cases_Other <- dat_blog_michigan_wide$Cases_Other.x + dat_blog_michigan_wide$Cases_Other.y
+dat_blog_michigan_wide$Cases_Ethnicity_Hispanic <- dat_blog_michigan_wide$Cases_Ethnicity_Hispanic.x + dat_blog_michigan_wide$Cases_Ethnicity_Hispanic.y
+dat_blog_michigan_wide$Cases_Ethnicity_NonHispanic <- dat_blog_michigan_wide$Cases_Ethnicity_NonHispanic.x + dat_blog_michigan_wide$Cases_Ethnicity_NonHispanic.y
+dat_blog_michigan_wide$Deaths_White <- dat_blog_michigan_wide$Deaths_White.x + dat_blog_michigan_wide$Deaths_White.y
+dat_blog_michigan_wide$Deaths_Black <- dat_blog_michigan_wide$Deaths_Black.x + dat_blog_michigan_wide$Deaths_Black.y
+dat_blog_michigan_wide$Deaths_LatinX <- dat_blog_michigan_wide$Deaths_LatinX.x + dat_blog_michigan_wide$Deaths_LatinX.y
+dat_blog_michigan_wide$Deaths_Asian <- dat_blog_michigan_wide$Deaths_Asian.x + dat_blog_michigan_wide$Deaths_Asian.y
+dat_blog_michigan_wide$Deaths_AIAN <- dat_blog_michigan_wide$Deaths_AIAN.x + dat_blog_michigan_wide$Deaths_AIAN.y
+dat_blog_michigan_wide$Deaths_HNPI <- dat_blog_michigan_wide$Deaths_HNPI.x + dat_blog_michigan_wide$Deaths_HNPI.y
+dat_blog_michigan_wide$Deaths_Multiracial <- dat_blog_michigan_wide$Deaths_Multiracial.x + dat_blog_michigan_wide$Deaths_Multiracial.y
+dat_blog_michigan_wide$Deaths_Other <- dat_blog_michigan_wide$Deaths_Other.x + dat_blog_michigan_wide$Deaths_Other.y
+dat_blog_michigan_wide$Deaths_Ethnicity_Hispanic <- dat_blog_michigan_wide$Deaths_Ethnicity_Hispanic.x + dat_blog_michigan_wide$Deaths_Ethnicity_Hispanic.y
+dat_blog_michigan_wide$Deaths_Ethnicity_NonHispanic <- dat_blog_michigan_wide$Deaths_Ethnicity_NonHispanic.x + dat_blog_michigan_wide$Deaths_Ethnicity_NonHispanic.y
+
+dat_blog_michigan_wide$cases_per_pop <- (dat_blog_michigan_wide$Cases_Total.x + dat_blog_michigan_wide$Cases_Total.y)/dat_blog_michigan_wide$wayne_pop_plus_detroit * 100000
+dat_blog_michigan_wide$deaths_per_pop <- (dat_blog_michigan_wide$Deaths_Total.x + dat_blog_michigan_wide$Deaths_Total.y)/dat_blog_michigan_wide$wayne_pop_plus_detroit * 100000
+dat_blog_michigan_wide$case_fatality <- (dat_blog_michigan_wide$Deaths_Total.x + dat_blog_michigan_wide$Deaths_Total.y)/(dat_blog_michigan_wide$Cases_Total.x + dat_blog_michigan_wide$Cases_Total.y) * 100
+dat_blog_michigan_wide$Sheet.Name <- "MIWayneWITHDetroit"
+
+dat_blog_michigan_wide %<>% mutate(cases_per_pop_white = Cases_White/wayne_pop_plus_detroit_white * 100000,
+                 cases_per_pop_black = Cases_Black/wayne_pop_plus_detroit_black * 100000,
+                 cases_per_pop_latinx = Cases_LatinX/wayne_pop_plus_detroit_latinx * 100000,
+                 cases_per_pop_asian = Cases_Asian/wayne_pop_plus_detroit_asian * 100000,
+                 cases_per_pop_aian = Cases_AIAN/wayne_pop_plus_detroit_aian * 100000,
+                 cases_per_pop_hnpi = Cases_HNPI/wayne_pop_plus_detroit_hnpi * 100000,
+                 cases_per_pop_multi = Cases_Multiracial/wayne_pop_plus_detroit_multiracial * 100000,
+                 cases_per_pop_other = Cases_Other/wayne_pop_plus_detroit_other * 100000,
+                 cases_per_pop_hispanic = Cases_Ethnicity_Hispanic/wayne_pop_plus_detroit_latinx * 100000,
+                 cases_per_pop_nonhispanic = Cases_Ethnicity_NonHispanic/wayne_pop_plus_detroit_non_hispanic * 100000,
+                 deaths_per_pop_white = Deaths_White/wayne_pop_plus_detroit_white * 100000,
+                 deaths_per_pop_black = Deaths_Black/wayne_pop_plus_detroit_black * 100000,
+                 deaths_per_pop_latinx = Deaths_LatinX/wayne_pop_plus_detroit_latinx * 100000,
+                 deaths_per_pop_asian = Deaths_Asian/wayne_pop_plus_detroit_asian * 100000,
+                 deaths_per_pop_aian = Deaths_AIAN/wayne_pop_plus_detroit_aian * 100000,
+                 deaths_per_pop_hnpi = Deaths_HNPI/wayne_pop_plus_detroit_hnpi * 100000,
+                 deaths_per_pop_multi = Deaths_Multiracial/wayne_pop_plus_detroit_multiracial * 100000,
+                 deaths_per_pop_other = Deaths_Other/wayne_pop_plus_detroit_other * 100000,
+                 deaths_per_pop_hispanic = Deaths_Ethnicity_Hispanic/wayne_pop_plus_detroit_latinx * 100000,
+                 deaths_per_pop_nonhispanic = Deaths_Ethnicity_NonHispanic/wayne_pop_plus_detroit_non_hispanic * 100000)
+
+
+dat_blog_michigan_wide %<>% mutate(case_fatality_white = Deaths_White/Cases_White * 100,
+                     case_fatality_black = Deaths_Black/Cases_Black * 100,
+                     case_fatality_latinx = Deaths_LatinX/Cases_LatinX * 100,
+                     case_fatality_asian = Deaths_Asian/Cases_Asian * 100,
+                     case_fatality_aian = Deaths_AIAN/Cases_AIAN * 100,
+                     case_fatality_hnpi = Deaths_HNPI/Cases_HNPI * 100,
+                     case_fatality_multi = Deaths_Multiracial/Cases_Multiracial * 100,
+                     case_fatality_other = Deaths_Other/Cases_Other * 100,
+                     case_fatality_hispanic = Deaths_Ethnicity_Hispanic/Cases_Ethnicity_Hispanic * 100,
+                     case_fatality_nonhispanic = Deaths_Ethnicity_NonHispanic/Cases_Ethnicity_NonHispanic * 100)
+
+dat_blog_michigan_complete <- dat_blog_michigan_wide
+  
+dat_blog_michigan <- dat_blog_michigan %>%
+  select(Date_Date, Sheet.Name, Daily_New_Cases, Cases_White, Cases_Black, Deaths_White, Deaths_Black, cases_per_pop, cases_per_pop_white, cases_per_pop_black, cases_per_pop_latinx, cases_per_pop_asian, cases_per_pop_aian, cases_per_pop_hnpi, cases_per_pop_multi, cases_per_pop_other, cases_per_pop_hispanic, cases_per_pop_nonhispanic, deaths_per_pop, deaths_per_pop_white, deaths_per_pop_black, deaths_per_pop_latinx, deaths_per_pop_asian, deaths_per_pop_aian, deaths_per_pop_hnpi, deaths_per_pop_multi, deaths_per_pop_other, deaths_per_pop_hispanic, deaths_per_pop_nonhispanic, case_fatality, case_fatality_white, case_fatality_black, case_fatality_latinx, case_fatality_asian, case_fatality_aian, case_fatality_hnpi, case_fatality_multi, case_fatality_other, case_fatality_hispanic, case_fatality_nonhispanic)
+
+dat_blog_michigan_wide <- dat_blog_michigan_wide %>%
+  select(Date_Date, Sheet.Name, Daily_New_Cases, Cases_White, Cases_Black, Deaths_White, Deaths_Black, cases_per_pop, cases_per_pop_white, cases_per_pop_black, cases_per_pop_latinx, cases_per_pop_asian, cases_per_pop_aian, cases_per_pop_hnpi, cases_per_pop_multi, cases_per_pop_other, cases_per_pop_hispanic, cases_per_pop_nonhispanic, deaths_per_pop, deaths_per_pop_white, deaths_per_pop_black, deaths_per_pop_latinx, deaths_per_pop_asian, deaths_per_pop_aian, deaths_per_pop_hnpi, deaths_per_pop_multi, deaths_per_pop_other, deaths_per_pop_hispanic, deaths_per_pop_nonhispanic, case_fatality, case_fatality_white, case_fatality_black, case_fatality_latinx, case_fatality_asian, case_fatality_aian, case_fatality_hnpi, case_fatality_multi, case_fatality_other, case_fatality_hispanic, case_fatality_nonhispanic)
+
+dat_blog_michigan_new<- rbind(dat_blog_michigan, dat_blog_michigan_wide)
+
+race_cases_michigan <-  dat_blog_michigan_new %>%
+  melt(id.vars = c("Sheet.Name", "Date_Date"), 
+       measure.vars = c("cases_per_pop_white", "cases_per_pop_black", "cases_per_pop_latinx",
+                        "cases_per_pop_asian", "cases_per_pop_aian", "cases_per_pop_hnpi", "cases_per_pop_multi",
+                        "cases_per_pop_other", "cases_per_pop_hispanic", "cases_per_pop_nonhispanic"))
+
+race_deaths_michigan <-dat_blog_michigan_new %>%
+  melt(id.vars = c("Sheet.Name", "Date_Date"), 
+       measure.vars = c("deaths_per_pop_white",
+                        "deaths_per_pop_black", "deaths_per_pop_latinx", "deaths_per_pop_asian", "deaths_per_pop_aian",
+                        "deaths_per_pop_hnpi", "deaths_per_pop_multi", "deaths_per_pop_other",
+                        "deaths_per_pop_hispanic", "deaths_per_pop_nonhispanic"))
+
+race_case_fatality_michigan <- dat_blog_michigan_new %>%
+    melt(id.vars = c("Sheet.Name", "Date_Date"), 
+       measure.vars = c("case_fatality_white",
+                        "case_fatality_black", "case_fatality_latinx", "case_fatality_asian", "case_fatality_aian",
+                        "case_fatality_hnpi", "case_fatality_multi", "case_fatality_other",
+                        "case_fatality_hispanic", "case_fatality_nonhispanic"))
+
+race_cases_noother_michigan <- filter(race_cases_michigan, variable != "cases_per_pop_other" & variable != "cases_per_pop_hispanic" & variable != "cases_per_pop_nonhispanic")
+
+race_deaths_noother_michigan <- filter(race_deaths_michigan, variable != "deaths_per_pop_other" & variable != "deaths_per_pop_hispanic" & variable != "deaths_per_pop_nonhispanic")
+
+race_case_fatality_noother_michigan <- filter(race_case_fatality_michigan, variable != "case_fatality_other" & variable != "case_fatality_hispanic" & variable != "case_fatality_nonhispanic")
+
+```
+
+# Michigan Cases
+```{r}
+ggplot(dat_blog_michigan_new, aes(x = Date_Date, y = cases_per_pop, color = Sheet.Name)) +
+  geom_point() +
+  geom_smooth(method = "lm", alpha = 0.5) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7.5),
+        axis.text.y = element_text(size = 7.5)) +
+  labs(x = "Date (Month Day)",
+       y = "Cases Per 100,000",
+       title = "Cumulative COVID-19 Cases Per 100,000 in Detroit and\nWayne County (with and w/o Detroit), Michigan\n06.03.20 through 08.04.20") +
+  scale_color_jama(name = "Location",
+                       labels = c("Detroit", "Wayne County (NO Detroit)", "Wayne County (WITH Detroit)"))
+
+setwd("~/Documents/COVIDTrackingProject/Output")
+#ggsave("200807_Cases_MI.tiff", width = 7.29, height = 4.51)
+
+max(filter(dat_blog_michigan_new, Sheet.Name == "MIDetroit")$cases_per_pop, na.rm = TRUE)
+max(filter(dat_blog_michigan_new, Sheet.Name == "MIWayneCounty")$cases_per_pop, na.rm = TRUE)
+max(filter(dat_blog_michigan_new, Sheet.Name == "MIWayneWITHDetroit")$cases_per_pop, na.rm = TRUE)
+mean(filter(dat_blog_michigan_new, Sheet.Name == "MIDetroit")$cases_per_pop, na.rm = TRUE)
+mean(filter(dat_blog_michigan_new, Sheet.Name == "MIWayneCounty")$cases_per_pop, na.rm = TRUE)
+mean(filter(dat_blog_michigan_new, Sheet.Name == "MIWayneWITHDetroit")$cases_per_pop, na.rm = TRUE)
+
+summary(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_michigan_new, Sheet.Name == "MIDetroit")))
+summary(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_michigan_new, Sheet.Name == "MIWayneCounty")))
+summary(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_michigan_new, Sheet.Name == "MIWayneWITHDetroit")))
+
+summary(lm(cases_per_pop ~ Date_Date, data = michigan_denom)) #7,9
+
+confint(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_michigan_new, Sheet.Name == "MIDetroit")))
+confint(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_michigan_new, Sheet.Name == "MIWayneCounty")))
+confint(lm(cases_per_pop ~ Date_Date, data = filter(dat_blog_michigan_new, Sheet.Name == "MIWayneWITHDetroit")))
+
+confint(lm(cases_per_pop ~ Date_Date, data = michigan_denom)) #7,9
+
+race_cases_noother_michigan$Sheet.Name <- as.character(race_cases_noother_michigan$Sheet.Name)
+labels <- c(MIDetroit = "Detroit", MIWayneCounty = "Wayne County\n(No Detroit)", MIWayneWITHDetroit = "Wayne County\n(with Detroit)")
+
+ggplot(filter(race_cases_noother_michigan, Date_Date >= "2020-06-03"), aes(x = Date_Date, y = value, color = variable)) +
+  geom_point() +
+  facet_wrap(~Sheet.Name,
+             labeller = labeller(Sheet.Name = labels)) +
+  theme_bw() +
+  scale_color_jco(name = "Race",
+                  labels = c("White", "Black", "LatinX", "Asian", "American Indian or Alaska Native", 
+                             "Hawaiian Native or Pacific Islander", "Multiracial")) +
+  labs(x = "Date",
+       y = "Case Count Per 100,000",
+       title = "COVID 19 Case Counts Per 100,000 by Race\n06.03.20 through 08.04.20") +
+  theme(axis.text.x = element_text(size = 5))
+#setwd("~/Documents/COVIDTrackingProject/Output")
+#ggsave("200806_CasesRace_MI.tiff", width = 7.29, height = 4.51)
+
+
+summary(aov(value ~ variable + Date_Date, data = filter(race_cases_noother_michigan, Sheet.Name == "MIDetroit")))
+TukeyHSD(aov(value ~ variable + Date_Date, data = filter(race_cases_noother_michigan, Sheet.Name == "MIDetroit")))
+
+summary(aov(value ~ variable + Date_Date, data = filter(race_cases_noother_michigan, Sheet.Name == "MIWayneCounty")))
+TukeyHSD(aov(value ~ variable + Date_Date, data = filter(race_cases_noother_michigan, Sheet.Name == "MIWayneCounty")))
+
+summary(aov(value ~ variable + Date_Date, data = filter(race_cases_noother_michigan, Sheet.Name == "MIWayneWITHDetroit")))
+TukeyHSD(aov(value ~ variable + Date_Date, data = filter(race_cases_noother_michigan, Sheet.Name == "MIWayneWITHDetroit")))
+```
+
+# Michigan Only Case Fatality
+```{r}
+michigan_denom$Sheet.Name <- "Michigan"
+michigan_denom %<>% filter(Date_Date >= "2020-06-03")
+case_fatality_michigan <- rbind(select(dat_blog_michigan_new, Date_Date, case_fatality, Sheet.Name), select(michigan_denom, Date_Date, case_fatality, Sheet.Name))
+
+setwd("~/Documents/COVIDTrackingProject/Output")
+ggplot(case_fatality_michigan, aes(x = Date_Date, y = case_fatality, color = Sheet.Name)) +
+  geom_point() +
+  geom_smooth(method = "lm", alpha = 0.5) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7.5),
+        axis.text.y = element_text(size = 7.5)) +
+  labs(x = "Date (Month Day)",
+       y = "Case Fatality (%)",
+       title = "Case Fatality in Detroit and Wayne County, Michigan\n06.03.20 through 08.04.20") +
+  scale_color_jama(name = "Location",
+                       labels = c("Detroit", "Wayne County (NO Detroit)", "Wayne County (WITH Detroit)", "Michigan"))
+ggsave("200807_CaseFatality_MI.tiff", width = 7.29, height = 4.51)
+
+race_case_fatality_noother$Sheet.Name <- as.character(race_case_fatality_noother$Sheet.Name)
+
+ggplot(filter(race_case_fatality_noother_michigan, Date_Date >= "2020-06-03"), aes(x = Date_Date, y = value, color = variable)) +
+  geom_point() +
+  facet_wrap(~Sheet.Name,
+             labeller = labeller(Sheet.Name = labels)) +
+  theme_bw() +
+  scale_color_jco(name = "Race",
+                  labels = c("White", "Black", "LatinX", "Asian", "American Indian or Alaska Native", 
+                             "Hawaiian Native or Pacific Islander", "Multiracial")) +
+  labs(x = "Date",
+       y = "Case Fatality (%)",
+       title = "COVID 19 Case Fatality by Race, 06.03.20 through 08.04.20") +
+  theme(axis.text.x = element_text(size = 5))
+setwd("~/Documents/COVIDTrackingProject/Output")
+ggsave("200806_CaseFatalityRace_MI.tiff", width = 7.29, height = 4.51)
+
+summary(lmer(value ~ variable*Date_Date + (1|Date_Date), data = filter(race_case_fatality_noother_michigan, Sheet.Name == "MIDetroit")))
+summary(aov(value ~ variable, data = filter(race_case_fatality_noother_michigan, Sheet.Name == "MIDetroit")))
+TukeyHSD(aov(value ~ variable, data = filter(race_case_fatality_noother_michigan, Sheet.Name == "MIDetroit")))
+TukeyHSD(aov(value ~ variable, data = filter(race_case_fatality_noother_michigan, Sheet.Name == "MIWayneCounty")))
+TukeyHSD(aov(value ~ variable, data = filter(race_case_fatality_noother_michigan, Sheet.Name == "MIWayneWITHDetroit")))
+
+
+```
+
+# IRR Calculation
+```{r}
+wayne_only_black <- filter(dat_blog_michigan_new, Sheet.Name == "MIWayneCounty") %>%
+  select(Date_Date, Cases_Black, Deaths_Black)
+
+wayne_detroit_black <- filter(dat_blog_michigan_new, Sheet.Name == "MIWayneWITHDetroit") %>%
+  select(Date_Date, Cases_Black, Deaths_Black)
+
+wayne_only_white <- filter(dat_blog_michigan_new, Sheet.Name == "MIWayneCounty") %>%
+  select(Date_Date, Cases_White, Deaths_White)
+
+wayne_detroit_white <- filter(dat_blog_michigan_new, Sheet.Name == "MIWayneWITHDetroit") %>%
+  select(Date_Date, Cases_White, Deaths_White)
+
+#Numerator
+max(wayne_only_black$Cases_Black, na.rm = TRUE) #3,748
+max(wayne_detroit_black$Cases_Black, na.rm = TRUE) #12,333
+
+max(wayne_only_white$Cases_White, na.rm = TRUE) #6,990
+max(wayne_detroit_white$Cases_White, na.rm = TRUE) #7,845
+
+#Risk Ratios (X is Wayne County) for Cases
+
+(max(wayne_only_black$Cases_Black, na.rm = TRUE)/unique(dat_blog_michigan_complete$SE_A04001_004.x))/(max(wayne_only_white$Cases_White, na.rm = TRUE)/unique(dat_blog_michigan_complete$SE_A04001_003.x))
+#2.84
+
+(max(wayne_detroit_black$Cases_Black, na.rm = TRUE)/unique(dat_blog_michigan_complete$wayne_pop_plus_detroit_black))/(max(wayne_detroit_white$Cases_White, na.rm = TRUE)/unique(dat_blog_michigan_complete$wayne_pop_plus_detroit_white))
+#2.01
+
+# Risk Ratios for Deaths (?)
+(max(wayne_only_black$Deaths_Black, na.rm = TRUE)/max(dat_blog_michigan_complete$Cases_Black.x, na.rm = TRUE))/(max(wayne_only_white$Deaths_White, na.rm = TRUE)/max(dat_blog_michigan_complete$Cases_White.x, na.rm = TRUE))
+#0.82
+
+(max(wayne_detroit_black$Deaths_Black, na.rm = TRUE)/max(wayne_detroit_black$Cases_Black, na.rm = TRUE))/(max(wayne_detroit_white$Deaths_White, na.rm = TRUE)/max(wayne_detroit_white$Cases_White, na.rm = TRUE))
+#1.10
+
+```
