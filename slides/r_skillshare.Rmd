@@ -34,6 +34,7 @@ library(grid)             # Organizes Visual Objects
 library(ggtext)           # Helps with text in ggplot2 objects
 library(cowplot)          # Helps with arranging and layering of ggplot2 objects 
 library(hrbrthemes)       # A ppackage I really like with lots of useful functions
+library(htmlwidgets)
 readRenviron("~/.Renviron")
 census_api_key <- Sys.getenv("CENSUS_API_KEY")
 ```
