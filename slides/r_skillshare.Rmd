@@ -66,6 +66,7 @@ theme_ctp <- function(base_size=14,base_family="SF Pro Text",title_size=18, subt
 xaringanExtra::use_xaringan_extra(c("tile_view", "animate_css", "tachyons"))
 
 xaringanExtra::use_share_again()
+xaringanExtra::use_webcam()
 xaringanExtra::style_share_again(
   share_buttons = c("twitter", "linkedin", "pocket")
 )
@@ -113,6 +114,8 @@ background-image: url('assets/images/hermione_spell_class.png')
 background-size: cover
 class: center, bottom, inverse
 
+## .blue[How to understand R if you are new...]
+
 ---
 background-image: url('assets/images/hp_vs_r.png')
 background-size: cover
@@ -123,11 +126,13 @@ background-image: url('assets/images/r_vs_rstudio.png')
 background-size: cover
 class: center, bottom, inverse
 
+## .blue[Understanding R vs. RStudio...]
+
 ---
 class: middle
 
 .pull-left[
-## How Base R Can Make You Feel...
+## How R Can Make You Feel Sometimes...
 ]
 
 .pull-right[
@@ -495,9 +500,9 @@ class: center, bottom, inverse animated animate fadeIn
 
 # Xaringan, xaringanExtra, + flipbookr
 
-These slides are mostly made with three R packages called [`xaringan`](https://github.com/yihui/xaringan), [`xaringanExtra`](https://pkg.garrickadenbuie.com/xaringanExtra/#/), and [`flipbookr`](https://github.com/EvaMaeRey/flipbookr) generates code step-by-step and organizes it alongside the output. 
+These slides are mostly made with three R packages called [`xaringan`](https://github.com/yihui/xaringan), [`xaringanExtra`](https://pkg.garrickadenbuie.com/xaringanExtra/#/), and [`flipbookr`](https://github.com/EvaMaeRey/flipbookr) (which generates the step-by-step code and organizes it alongside the output). 
 
-I'm not really going to go into all the things each of these packages can do, but I hope the slides speak to how great the package is! If you have R + RStudio installed on your laptop, you can install these packages directly from Github by pasting this in your RStudio console:
+I'm not really going to go into all the things each of these packages can do, but I hope the slides speak to how great the packages are! If you have R + RStudio installed on your laptop, you can install these packages directly from Github by pasting this in your RStudio console:
 
 ```{r eval=FALSE, tidy=FALSE}
 # install.packages("devtools")
@@ -506,4 +511,4 @@ devtools::install_github("gadenbuie/xaringanExtra")
 devtools::install_github("EvaMaeRey/flipbookr")
 ```
 
-Also, the interactive chart was made with one of my favorite R packages called [`highcharter`](https://jkunst.com/highcharter/) which is an R wrapper for the highcharts.js library.
+Also, the interactive chart was made with one of my favorite R packages called [`highcharter`](https://jkunst.com/highcharter/) which is an amazing R wrapper for the highcharts.js library.
